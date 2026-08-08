@@ -1274,7 +1274,9 @@ ${input}
   }
 
   async function callModel(system, userPrompt, maxTokens){
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    // Call the Vercel serverless function instead of Anthropic directly from the browser.
+    // The Anthropic API key stays safely on the server in Vercel Environment Variables.
+    const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1284,8 +1286,13 @@ ${input}
         messages: [{ role: "user", content: userPrompt }]
       })
     });
-    if (!response.ok) throw new Error('bad_status');
-    const data = await response.json();
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      console.error('AI API error:', data);
+      throw new Error(data.error || 'AI request failed');
+    }
+
     const blocks = (data.content || []).filter(b => b.type === 'text').map(b => b.text);
     if (blocks.length === 0) throw new Error('empty_response');
     return blocks.join('\n\n');
